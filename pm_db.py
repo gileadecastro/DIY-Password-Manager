@@ -13,62 +13,7 @@ from inputimeout import inputimeout, TimeoutOccurred
 
 from god_key_hasher import *
 
-divider = "-----------------------------------------------------------------------------------------------------------------------\n"
-lock_img = """                               
-                                   
-                                                          ^jEQBQDj^             
-                                                       r#@@@@@@@@@#r           
-                                                       ?@@@#x_`_v#@@@x          
-                                                       g@@@!     !@@@Q          
-                                                       Q@@@_     _@@@B          
-                                                    rgg@@@@QgggggQ@@@@ggr       
-                                                    Y@@@@@@@@@@@@@@@@@@@Y       
-                                                    Y@@@@@@@Qx^xQ@@@@@@@Y       
-                                                    Y@@@@@@@^   ~@@@@@@@Y       
-                                                    Y@@@@@@@@r r#@@@@@@@Y       
-                                                    Y@@@@@@@@c,c@@@@@@@@Y       
-                                                    Y@@@@@@@@@@@@@@@@@@@Y       
-                                                    v###################v       
-                                                   
-                                                                
-    """
-check_img = """                               
-                                   
-                                                                       `xx.  
-                                                                     'k#@@@h`
-                                                                   _m@@@@@@Q,
-                                                                 "M@@@@@@$*  
-                                                 `xk<          =N@@@@@@9=    
-                                                T#@@@Qr      ^g@@@@@@5,      
-                                                y@@@@@@Bv  ?Q@@@@@@s-        
-                                                `V#@@@@@#B@@@@@@w'          
-                                                    `}#@@@@@@@@#T`            
-                                                      vB@@@@Bx               
-                                                        )ER)                            
-                                                                                                       
-    """
-vault_img = """
-                                          !wdEEEEEEEEEEEEEEEEEEEEEEEEEEEEdw~   
-                                        M@@ZzzzzzzzzzzzzzzzzzzzzzzzzzzzzZ@@6` 
-                                        \@@: !vvxvvvvvvvvvvvvvvvvvvvvvxv~ :@@L 
-                                        x@@` 0@@@@@@@@@@@@@@@@@@@@@@@@@@Q `@@c 
-                                        x@@` $@@@@@@@@@@@@@@@@@@@@@@@@@@Q `@@c 
-                                        x@@` $@@@@@@@@@@@@@@@@@@@@@@@@#Tr `@@c 
-                                        x@@` $@@@@#I)!,,~L6@@@@@@@@@@@m   `@@c 
-                                        x@@` $@@@v`L$@###M!-6@@@@@@@@@3   `@@c 
-                                        x@@` $@@)`8@x`  ,d@zT@@@@@@@@@@MT `@@c 
-                                        x@@` $@@ r@3            !@@@@@@@Q `@@c 
-                                        x@@` $@@r`Q@\`  _Z@z}#@@@@@@@@0-` `@@c 
-                                        x@@` $@@@)`T8@B##Z~-d@@@@@@@@@m   `@@c 
-                                        x@@` $@@@@Bz*:,,!xd@@@@@@@@@@@E`  `@@c 
-                                        x@@` $@@@@@@@@@@@@@@@@@@@@@@@@@@Q `@@c 
-                                        x@@` $@@@@@@@@@@@@@@@@@@@@@@@@@@Q `@@c 
-                                        x@@` $@@@@@@@@@@@@@@@@@@@@@@@@@@Q `@@c 
-                                        \@@: !LLLLLLLLLLLLLLLLLLLLLLLLLL> :@@L 
-                                        `d@@MwwwwwwwwwwwwwwwwwwwwwwwwwwwwM@@E` 
-                                          ~z6Q@@@@@@$0$$$$0$$0$$0$@@@@@@B6z>   
-                                            ,EEEEEd              ZEEEEE!                    
-"""
+from utils import ascii_images
 
 timeout_global_code = "*TIMEOUT*"
 
@@ -78,12 +23,12 @@ def main():
         file = open("pm_db.mmf", "r+")
         file.close()
     except FileNotFoundError:
-        print(vault_img)
+        print(ascii_images("vault"))
         print("\nVAULT SETUP\n\nCould not find pm_db.mmf in local directory, continuing to vault setup.")
         print(vault_setup())
 
     os.system("cls" if os.name == "nt" else "clear")
-    print(lock_img)
+    print(ascii_images("lock"))
     hashed_pass = False
     c_salt, c_verifier, database = file_setup()
     while not hashed_pass:
@@ -106,8 +51,8 @@ def main_pwd_manager(hashed_pass, contents):
     timed_out = False
     while not timed_out:
         os.system("cls" if os.name == "nt" else "clear")
-        print(check_img)
-        print(divider)
+        print(ascii_images("check"))
+        print(ascii_images("divider"))
         print(
             "\n(a)dd profile | (f)ind profile data  | (e)dit profile data | (r)ead all profiles | (d)elete profile "
             "data\n(g)enerate password | (c)hange master password | e(x)it\n"
@@ -400,7 +345,7 @@ def read_all_profiles(hashed_pass, db):
             print("Username: " + username)
             del e
             del username
-            print(divider)
+            print(ascii_images("divider"))
 
         if i == 0:
             print("No saved profiles")
@@ -532,8 +477,8 @@ def file_setup():
 
 def display_header(title):
     os.system("cls" if os.name == "nt" else "clear")
-    print(check_img)
-    print(divider)
+    print(ascii_images("check"))
+    print(ascii_images("divider"))
     print(str(title) + "\n")
 
 
@@ -565,7 +510,7 @@ def to_clipboard(input_to_copy):
 
 def timeout_cleanup():
     os.system("cls" if os.name == "nt" else "clear")
-    print(lock_img)
+    print(ascii_images("lock"))
     print(
         "\n\nYour session expired. For your security, the program has automatically exited. All submitted data is "
         "still saved."
