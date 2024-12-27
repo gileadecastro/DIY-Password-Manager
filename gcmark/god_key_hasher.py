@@ -9,6 +9,14 @@ from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
 
 
+def get_vault_directory():
+    user_home = os.path.expanduser("~")
+    vault_dir = os.path.join(user_home, "gcmark-vault")
+    if not os.path.exists(vault_dir):
+        os.makedirs(vault_dir)
+    return vault_dir
+
+
 def encrypt_data(input_data, hashed_pass):
     message = input_data.encode()
     f = Fernet(hashed_pass)
@@ -31,8 +39,15 @@ def argon_2_hash(input_data):
     return ph_hash
 
 
-def vault_setup():
+def vault_setup(vault_img):
+    vault_dir = get_vault_directory()
     password_provided = getpass.getpass("What would you like your master password to be? ")
+    while len(password_provided) < 6:
+        os.system("cls" if os.name == "nt" else "clear")
+        print(vault_img)
+        print("\nVAULT SETUP\n")
+        print("Password must be at least 6 characters long.")
+        password_provided = getpass.getpass("What would you like your master password to be? ")
     password = password_provided.encode()
     salt = os.urandom(32)
     kdf = Scrypt(
@@ -44,18 +59,24 @@ def vault_setup():
     )
     hashed_entered_pass = base64.urlsafe_b64encode(kdf.derive(password))
 
-    file = open("SALT.txt", "wb")
-    file.write(salt)
-    file.close()
+    with open(os.path.join(vault_dir, "SALT.txt"), "wb") as file:
+        file.write(salt)
+        file.close()
     del salt
 
-    file = open("VERIFIER.txt", "wb")
-    file.write(encrypt_data("entered_master_correct", hashed_entered_pass))
-    file.close()
+    with open(os.path.join(vault_dir, "VERIFIER.txt"), "wb") as file:
+        file.write(encrypt_data("entered_master_correct", hashed_entered_pass))
+        file.close()
 
-    file = open("pm_db.mmf", "w+")
-    file.write(str(encrypt_data("{}", hashed_entered_pass).decode('utf-8')))
-    file.close()
+    with open(os.path.join(vault_dir, "pm_db.mmf"), "w+") as file:
+        file.write(str(encrypt_data("{}", hashed_entered_pass).decode('utf-8')))
+        file.close()
     del hashed_entered_pass
 
-    input("Your password vault was created. Access it using the pm_db.py file. Press ENTER to continue to login...")
+    os.system("cls" if os.name == "nt" else "clear")
+    print(vault_img)
+
+    input(f"\nYour password vault was created in '{vault_dir}'. "
+          "\nIf you lose your master password, you will lose access to your vault."
+          f"\nIf it occurs, delete the 'pm_db.mmf' file located at {vault_dir} and run the setup again."
+          "\nPress ENTER to continue to login...")
