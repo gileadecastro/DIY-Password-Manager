@@ -2,8 +2,8 @@ from setuptools import setup, find_packages
 
 setup(
     name="gcmark-vault",
-    version="1.0.1",
-    description="A CLI-based password manager.",
+    version="1.0.2",
+    description="A secure CLI-based password manager.",
     author="Gileade Castro & Mark McKinney",
     packages=find_packages(),
     install_requires=[
