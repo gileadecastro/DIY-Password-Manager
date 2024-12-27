@@ -37,7 +37,7 @@ if [[ ! -d "$VENV_DIR" ]]; then
     $PIP_EXECUTABLE install -r requirements.txt
 
     if [[ "$OSTYPE" == "linux-gnu"* || "$OSTYPE" == "darwin"* ]]; then
-    clear
+      clear
     elif [[ "$OSTYPE" == "msys"* || "$OSTYPE" == "cygwin"* || "$OSTYPE" == "win32" ]]; then
         cls
     fi
