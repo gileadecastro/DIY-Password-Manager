@@ -1,6 +1,7 @@
 ![DIY Password Manager Screenshot](banner.png)
 
 # Password Manager
+## This is a fork made by [@gileadecastro](https://github.com/gileadecastro)
 I built this to strengthen my cryptography skills and knowledge of data types in Python. This Password Manager doesn't keep your master password. Instead, valid passwords are determined if it decrypts a known string correctly. Typically, the salt and verifier hashes would be kept in a secure database. However, for educational purposes, I've kept them in text files. 
 
 I'd love to hear from you about where I could improve it! You can also follow me on [Twitter](https://twitter.com/MarkDMcKinney) to keep updated on this project's (and other projects') progress.
@@ -13,10 +14,13 @@ I'd love to hear from you about where I could improve it! You can also follow me
 This was done by encrypting JSON that contained logins, having all hashes and salts created with as much randomness as possible, and having an encrypted verifier string that the program knew what the decrypted version was.
 
 ## Instructions
-Just run the pm_db.py file. If you would like to setup a new vault, delete the pm_db.mmf file. Then, reopen pm_db.py and it will automatically walk you through the setup steps.
+1. Save an alias for the run.sh file in your system variables. This will allow you to run the program from anywhere in your terminal.
+The shell script will create a virtual environment, install the necessary packages, and run the pm_db.py file.
 
-## Demo
-You can run the demo by opening the pm_db.py file and using **thisisatest!** as the password.
+    For example: 
+    ```alias pwd-manager="/Users/user/github/python-password-manager/run.sh"```
+
+2. Just run the pm_db.py file, or the alias, and it will automatically walk you through the setup steps.
 
 ## TODO
 - ~~**Password generator**~~: You can now generate truely random and secure passwords of a desired length.
