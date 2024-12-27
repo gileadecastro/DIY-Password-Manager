@@ -35,6 +35,13 @@ if [[ ! -d "$VENV_DIR" ]]; then
     fi
 
     $PIP_EXECUTABLE install -r requirements.txt
+
+    if [[ "$OSTYPE" == "linux-gnu"* || "$OSTYPE" == "darwin"* ]]; then
+    clear
+    elif [[ "$OSTYPE" == "msys"* || "$OSTYPE" == "cygwin"* || "$OSTYPE" == "win32" ]]; then
+        cls
+    fi
+
     if [[ $? -ne 0 ]]; then
         echo "Failed to install dependencies. Check your requirements.txt file and network connection."
         deactivate
