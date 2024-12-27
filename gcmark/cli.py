@@ -1,3 +1,6 @@
+import sys
+import os
+import subprocess
 import difflib
 import json
 import string
@@ -11,14 +14,28 @@ import pyperclip
 import secrets
 from inputimeout import inputimeout, TimeoutOccurred
 
-from god_key_hasher import *
+current_dir = os.path.dirname(os.path.abspath(__file__))
+base_dir = os.path.dirname(current_dir)
+if base_dir not in sys.path:
+    sys.path.append(base_dir)
 
-from utils import ascii_images
+from gcmark.god_key_hasher import *
+
+from gcmark.utils import ascii_images
 
 timeout_global_code = "*TIMEOUT*"
 
 
 def main():
+    if os.name != 'nt' and os.geteuid() != 0:
+        print("Restarting with admin privileges...")
+        try:
+            subprocess.run(["sudo", sys.executable, "-m", "gcmark.cli", *sys.argv[1:]], check=True)
+        except subprocess.CalledProcessError as e:
+            print(f"Error while trying to start with admin privileges: {e}")
+            sys.exit(1)
+        return
+
     try:
         file = open("pm_db.mmf", "r+")
         file.close()
