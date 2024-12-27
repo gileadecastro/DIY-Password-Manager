@@ -23,6 +23,7 @@ def main():
         file = open("pm_db.mmf", "r+")
         file.close()
     except FileNotFoundError:
+        os.system("cls" if os.name == "nt" else "clear")
         print(ascii_images("vault"))
         print("\nVAULT SETUP\n\nCould not find pm_db.mmf in local directory, continuing to vault setup.")
         print(vault_setup())
@@ -55,7 +56,7 @@ def main_pwd_manager(hashed_pass, contents):
         print(ascii_images("divider"))
         print(
             "\n(a)dd profile | (f)ind profile data  | (e)dit profile data | (r)ead all profiles | (d)elete profile "
-            "data\n(g)enerate password | (c)hange master password | e(x)it\n"
+            "data\n(g)enerate password | (c)hange master password | e(x)it | (p)urge account\n"
         )
         user_cmd = timeout_input("What would you like to do? ")
         print("\n")
@@ -84,6 +85,9 @@ def main_pwd_manager(hashed_pass, contents):
         if user_cmd == "c":
             timed_out = change_master_password(hashed_pass, db)
 
+        if user_cmd == "p":
+            timed_out = purge_account()
+
         if user_cmd == "x":
             os.system("cls" if os.name == "nt" else "clear")
             timed_out = True
@@ -97,11 +101,52 @@ def main_pwd_manager(hashed_pass, contents):
     del db
 
 
+def purge_account():
+    display_header("PURGE ACCOUNT")
+    user_response = timeout_input(
+        "Proceed with caution, this will delete all saved profiles and cannot be undone.\n\n"
+        "Would you like to purge your account? (type (y) for purge or (.c) to cancel)? "
+    )
+    if (user_response != ".c" and user_response != "" and user_response != " "
+            and user_response != timeout_global_code and user_response == "y"):
+        display_header("PURGE ACCOUNT CONFIRMATION")
+        user_confirmation = timeout_input(
+            "This action cannot be undone!\n\n"
+            "Confirm by typing 'PURGE' (type (.c) to cancel): "
+        )
+        if user_confirmation == "PURGE":
+            try:
+                os.remove("pm_db.mmf")
+                os.remove("SALT.txt")
+                os.remove("VERIFIER.txt")
+                os.system("cls" if os.name == "nt" else "clear")
+                print(ascii_images("lock"))
+                print(
+                    "\n\nYour account was deleted. The program has automatically exited."
+                )
+                sys.exit()
+            except ValueError:
+                print("Could not purge profile (Error code: 01)")
+                user_continue = timeout_input("\nPress enter to return to menu...")
+                if user_continue != timeout_global_code:
+                    return False
+                else:
+                    return True
+        else:
+            return False
+    else:
+        if user_response != timeout_global_code:
+            return False
+        else:
+            return True
+
+
 def change_master_password(hashed_pass, db):
     display_header("CHANGE MASTER PASSWORD")
     password_provided = timeout_input(
         "What would you like your master password to be (type and submit (.c) to cancel)? ")
-    if password_provided != ".c" and password_provided != "" and password_provided != " " and password_provided != timeout_global_code:
+    if (password_provided != ".c" and password_provided != "" and password_provided != " "
+            and password_provided != "c" and password_provided != timeout_global_code):
         password = password_provided.encode()
         salt = os.urandom(random.randint(16, 256))
         kdf = Scrypt(
@@ -161,11 +206,7 @@ def change_master_password(hashed_pass, db):
                 return True
     else:
         if password_provided != timeout_global_code:
-            user_continue = timeout_input("\nPress enter to return to menu...")
-            if user_continue != timeout_global_code:
-                return False
-            else:
-                return True
+            return False
         else:
             return True
 
@@ -279,14 +320,24 @@ def edit_profile_data(hashed_pass, db):
             )
 
             edit_user = timeout_input("New Username (press enter to keep the current: " + curr_user + "): ")
-            if edit_user == ".c" or edit_user == " " or edit_user == "":
+            if edit_user == ".c":
+                print("Operation canceled.")
+                user_continue = timeout_input("\nPress enter to return to menu...")
+
+                if user_continue != timeout_global_code:
+                    print("Returning to menu")
+                    return False
+                else:
+                    return True
+
+            if edit_user == " " or edit_user == "":
                 edit_user = curr_user
 
             if edit_user == timeout_global_code:
                 return True
 
             edit_password = timeout_input("New Password (press enter to keep the current: " + curr_password + "): ")
-            if edit_password == ".c" or edit_password == " " or edit_user == "":
+            if edit_password == " " or edit_password == "":
                 edit_password = curr_password
 
             if edit_password == timeout_global_code:
@@ -355,7 +406,7 @@ def read_all_profiles(hashed_pass, db):
                 "\nSelect the password to be copied to your clipboard (ex: 1), or type (.c) to cancel: ")
 
             if user_continue.isdigit():
-                if int(user_continue) > 0:
+                if 0 < int(user_continue) <= i:
                     try:
                         password = str(
                             decrypt_data(bytes(db[str(domains[int(user_continue) - 1])]["password"], encoding="utf-8"),
@@ -363,7 +414,7 @@ def read_all_profiles(hashed_pass, db):
                         )
                         print("\n" + to_clipboard(password))
                         del password
-                    except ValueError:
+                    except:
                         print("\nUnable to find profile corresponding to " + str(user_continue) + ".")
                 else:
                     print("\nThere are no profiles corresponding to that number.")
