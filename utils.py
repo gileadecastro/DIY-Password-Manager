@@ -33,6 +33,26 @@ def ascii_images(value):
                                                             )ER)                            
     
         """
+    alert_img = """
+                                                   
+                                                `xx.  
+                                              'k#@@@h`
+                                             _m@@@@@Q,
+                                             "M@@@@@$*
+                                              "M@@@@$*
+                                              'k#@@h`
+                                              'k#@@h`
+                                               T#@Q
+                                               T#@Q
+                                               `xx.
+                                            
+                                               `xx.  
+                                             'k#@@h`
+                                            _m@@@@@Q,
+                                             'k#@@h`
+                                              `xx.
+                                           
+    """
     vault_img = """
                                               !wdEEEEEEEEEEEEEEEEEEEEEEEEEEEEdw~   
                                             M@@ZzzzzzzzzzzzzzzzzzzzzzzzzzzzzZ@@6` 
