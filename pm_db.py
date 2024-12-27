@@ -102,14 +102,14 @@ def main_pwd_manager(hashed_pass, contents):
 
 
 def purge_account():
-    display_header("PURGE ACCOUNT")
+    display_alert("PURGE ACCOUNT")
     user_response = timeout_input(
         "Proceed with caution, this will delete all saved profiles and cannot be undone.\n\n"
         "Would you like to purge your account? (type (y) for purge or (.c) to cancel)? "
     )
     if (user_response != ".c" and user_response != "" and user_response != " "
             and user_response != timeout_global_code and user_response == "y"):
-        display_header("PURGE ACCOUNT CONFIRMATION")
+        display_alert("PURGE ACCOUNT CONFIRMATION")
         user_confirmation = timeout_input(
             "This action cannot be undone!\n\n"
             "Confirm by typing 'PURGE' (type (.c) to cancel): "
@@ -142,7 +142,7 @@ def purge_account():
 
 
 def change_master_password(hashed_pass, db):
-    display_header("CHANGE MASTER PASSWORD")
+    display_alert("CHANGE MASTER PASSWORD")
     password_provided = timeout_input(
         "What would you like your master password to be (type and submit (.c) to cancel)? ")
     if (password_provided != ".c" and password_provided != "" and password_provided != " "
@@ -438,7 +438,7 @@ def read_all_profiles(hashed_pass, db):
 
 
 def delete_profile_data(hashed_pass, db):
-    display_header("DELETE A PROFILE")
+    display_alert("DELETE A PROFILE")
     del_domain = timeout_input("Write the exact saved domain name (type (.c) to cancel): ")
 
     if del_domain != ".c" and del_domain != timeout_global_code:
@@ -529,6 +529,13 @@ def file_setup():
 def display_header(title):
     os.system("cls" if os.name == "nt" else "clear")
     print(ascii_images("check"))
+    print(ascii_images("divider"))
+    print(str(title) + "\n")
+
+
+def display_alert(title):
+    os.system("cls" if os.name == "nt" else "clear")
+    print(ascii_images("alert"))
     print(ascii_images("divider"))
     print(str(title) + "\n")
 
