@@ -134,7 +134,7 @@ def purge_account():
         "Would you like to purge your account? (type (y) for purge or (.c) to cancel)? "
     )
 
-    if is_valid_input(user_response) and user_response == "y":
+    if is_valid_input(user_response) and user_response == "y":  # TODO: Validate
         vault_dir = get_vault_directory()
         display_alert("PURGE ACCOUNT CONFIRMATION")
         user_confirmation = timeout_input(
