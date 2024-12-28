@@ -51,7 +51,7 @@ if [[ ! -d "$VENV_DIR" ]]; then
 fi
 
 if [[ "$OSTYPE" == "msys"* || "$OSTYPE" == "cygwin"* || "$OSTYPE" == "win32" ]]; then
-    "$PYTHON_EXECUTABLE" pm_db.py
+    "$PYTHON_EXECUTABLE" gcmark/cli.py
 else
-    sudo "$PYTHON_EXECUTABLE" pm_db.py
+    "$PYTHON_EXECUTABLE" gcmark/cli.py
 fi

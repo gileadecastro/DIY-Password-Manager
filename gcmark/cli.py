@@ -1,3 +1,6 @@
+import sys
+import os
+import subprocess
 import difflib
 import json
 import string
@@ -11,32 +14,54 @@ import pyperclip
 import secrets
 from inputimeout import inputimeout, TimeoutOccurred
 
-from god_key_hasher import *
+current_dir = os.path.dirname(os.path.abspath(__file__))
+base_dir = os.path.dirname(current_dir)
+if base_dir not in sys.path:
+    sys.path.append(base_dir)
 
-from utils import ascii_images
+from gcmark.god_key_hasher import *
+
+from gcmark.utils import ascii_images
 
 timeout_global_code = "*TIMEOUT*"
 
 
 def main():
+    vault_folder = get_vault_directory()
+
+    if os.name != 'nt' and os.geteuid() != 0:
+        print("For copy passwords securely the Vault needs admin privilege!\nRestarting with admin privileges...")
+        try:
+            subprocess.run(["sudo", sys.executable, "-m", "gcmark.cli", *sys.argv[1:]], check=True)
+        except subprocess.CalledProcessError as e:
+            print(f"Error while trying to start with admin privileges: {e}")
+            sys.exit(1)
+        return
+
     try:
-        file = open("pm_db.mmf", "r+")
+        file = open(os.path.join(vault_folder, "pm_db.mmf"), "r+")
         file.close()
     except FileNotFoundError:
         os.system("cls" if os.name == "nt" else "clear")
         print(ascii_images("vault"))
-        print("\nVAULT SETUP\n\nCould not find pm_db.mmf in local directory, continuing to vault setup.")
-        print(vault_setup())
+        print("\nVAULT SETUP\n\nCould not find pm_db.mmf in your directory, continuing to vault setup.")
+        print(vault_setup(ascii_images("vault")))
 
     os.system("cls" if os.name == "nt" else "clear")
     print(ascii_images("lock"))
     hashed_pass = False
     c_salt, c_verifier, database = file_setup()
+    error_count = 0
+
     while not hashed_pass:
+        error_count = error_count + 1
         entered_pass = getpass.getpass("Enter Master Key: ")
         hashed_pass = verify_password(entered_pass, c_salt, c_verifier)
         if not hashed_pass:
-            print("Incorrect master password. Try again.\n")
+            print("Incorrect master password. Try again.\n") if error_count < 4 else (
+                print("Incorrect master password. Try again.\n\nYou can setup a new vault by deleting the 'pm_db.mmf' "
+                      "at the 'gcmark-vault' folder.\nThis will delete all saved profiles and cannot be undone.\n")
+            )
     if hashed_pass:
         del entered_pass
         main_pwd_manager(hashed_pass, database)
@@ -50,6 +75,7 @@ def main_pwd_manager(hashed_pass, contents):
     os.system("cls" if os.name == "nt" else "clear")
     db = json.loads(decrypt_data(contents, hashed_pass).decode("utf-8"))
     timed_out = False
+
     while not timed_out:
         os.system("cls" if os.name == "nt" else "clear")
         print(ascii_images("check"))
@@ -80,7 +106,7 @@ def main_pwd_manager(hashed_pass, contents):
             timed_out = delete_profile_data(hashed_pass, db)
 
         if user_cmd == "g":
-            timed_out = pwd_generate(hashed_pass, db)
+            timed_out = pwd_generate()
 
         if user_cmd == "c":
             timed_out = change_master_password(hashed_pass, db)
@@ -107,18 +133,20 @@ def purge_account():
         "Proceed with caution, this will delete all saved profiles and cannot be undone.\n\n"
         "Would you like to purge your account? (type (y) for purge or (.c) to cancel)? "
     )
-    if (user_response != ".c" and user_response != "" and user_response != " "
-            and user_response != timeout_global_code and user_response == "y"):
+
+    if is_valid_input(user_response) and user_response == "y":  # TODO: Validate
+        vault_dir = get_vault_directory()
         display_alert("PURGE ACCOUNT CONFIRMATION")
         user_confirmation = timeout_input(
             "This action cannot be undone!\n\n"
             "Confirm by typing 'PURGE' (type (.c) to cancel): "
         )
+
         if user_confirmation == "PURGE":
             try:
-                os.remove("pm_db.mmf")
-                os.remove("SALT.txt")
-                os.remove("VERIFIER.txt")
+                os.remove(os.path.join(vault_dir, "pm_db.mmf"))
+                os.remove(os.path.join(vault_dir, "SALT.txt"))
+                os.remove(os.path.join(vault_dir, "VERIFIER.txt"))
                 os.system("cls" if os.name == "nt" else "clear")
                 print(ascii_images("lock"))
                 print(
@@ -128,25 +156,25 @@ def purge_account():
             except ValueError:
                 print("Could not purge profile (Error code: 01)")
                 user_continue = timeout_input("\nPress enter to return to menu...")
-                if user_continue != timeout_global_code:
-                    return False
-                else:
-                    return True
+                return cancel_or_timeout(user_continue)
         else:
             return False
+
     else:
-        if user_response != timeout_global_code:
-            return False
-        else:
-            return True
+        return cancel_or_timeout(user_response)
 
 
 def change_master_password(hashed_pass, db):
     display_alert("CHANGE MASTER PASSWORD")
     password_provided = timeout_input(
-        "What would you like your master password to be (type and submit (.c) to cancel)? ")
-    if (password_provided != ".c" and password_provided != "" and password_provided != " "
-            and password_provided != "c" and password_provided != timeout_global_code):
+        "Type your NEW password for your master account or leave blank to cancel: ")
+
+    if is_valid_input(password_provided):
+        if len(password_provided) < 6:
+            print("Your password must have at least 6 characters.")
+            user_continue = timeout_input("\nPress enter to return to menu...")
+            return cancel_or_timeout(user_continue)
+        vault_dir = get_vault_directory()
         password = password_provided.encode()
         salt = os.urandom(random.randint(16, 256))
         kdf = Scrypt(
@@ -181,12 +209,12 @@ def change_master_password(hashed_pass, db):
                 del password
 
             del domains
-            file = open("SALT.txt", "wb")
+            file = open(os.path.join(vault_dir, "SALT.txt"), "wb")
             file.write(salt)
             file.close()
             del salt
 
-            file = open("VERIFIER.txt", "wb")
+            file = open(os.path.join(vault_dir, "VERIFIER.txt"), "wb")
             file.write(encrypt_data("entered_master_correct", hashed_entered_pass))
             file.close()
 
@@ -200,37 +228,39 @@ def change_master_password(hashed_pass, db):
         except ValueError:
             print("Could not change master password (Error code: 01)")
             user_continue = timeout_input("\nPress enter to return to menu...")
-            if user_continue != timeout_global_code:
-                return False
-            else:
-                return True
+            return cancel_or_timeout(user_continue)
     else:
-        if password_provided != timeout_global_code:
-            return False
-        else:
-            return True
+        return cancel_or_timeout(password_provided)
 
 
 def add_profile(hashed_pass, db):
     display_header("ADD A PROFILE")
     print("Type and submit (.c) to cancel.")
     add_domain = timeout_input("Website domain name: ")
-    if add_domain == ".c":
-        print("Operation canceled.")
-        return False
-    if add_domain != ".c" and add_domain != timeout_global_code:
-        add_user = timeout_input("Username: ")
-    if add_user != ".c" and add_user != timeout_global_code:
-        add_password = timeout_input("Password: ")
-    if add_domain != ".c" and add_domain != timeout_global_code and add_user != timeout_global_code and add_password != timeout_global_code:
-        db[add_domain] = {
-            "username": str(encrypt_data(add_user, hashed_pass).decode("utf-8")),
-            "password": str(encrypt_data(add_password, hashed_pass).decode("utf-8")),
-        }
-        overwrite_db(encrypt_data(json.dumps(db), hashed_pass).decode("utf-8"))
-        print("Created " + add_domain + " profile successfully!")
-    if add_domain == timeout_global_code or add_user == timeout_global_code or add_password == timeout_global_code:
-        return True
+
+    if not is_valid_input(add_domain):
+        return cancel_or_timeout(add_domain)
+
+    if add_domain in db:
+        print("Profile already exists. You can update it or cancel by typing (.c).")
+
+    add_user = timeout_input("Username: ")
+    if not is_valid_input(add_user):
+        return cancel_or_timeout(add_user)
+
+    add_password = timeout_input("Password: ")
+    if not is_valid_input(add_password):
+        return cancel_or_timeout(add_password)
+
+    db[add_domain] = {
+        "username": encrypt_data(add_user, hashed_pass).decode("utf-8"),
+        "password": encrypt_data(add_password, hashed_pass).decode("utf-8"),
+    }
+    overwrite_db(encrypt_data(json.dumps(db), hashed_pass).decode("utf-8"))
+    print(f"Profile '{add_domain}' created/updated successfully!")
+    user_continue = timeout_input("\nPress enter to return to menu...")
+
+    return cancel_or_timeout(user_continue)
 
 
 def find_profile_data(hashed_pass, db):
@@ -238,16 +268,17 @@ def find_profile_data(hashed_pass, db):
     print("Type and submit (.c) to cancel.")
     read_domain = timeout_input("What's the domain you're looking for? ")
 
-    if read_domain != ".c" and read_domain != timeout_global_code:
+    if is_valid_input(read_domain):
         try:
             domains = list(db.keys())
             matches = difflib.get_close_matches(read_domain, domains)
 
             if matches:
                 print("\nClosest match:\n")
-                i = 1
+                i = 0
 
                 for d in matches:
+                    i = i + 1
                     domain_info = db[d]
                     username = str(
                         decrypt_data(bytes(domain_info["username"], encoding="utf-8"), hashed_pass).decode("utf-8")
@@ -257,14 +288,13 @@ def find_profile_data(hashed_pass, db):
                     print("Username: " + username + "\n")
                     del domain_info
                     del username
-                    i = i + 1
 
                 user_continue = timeout_input(
-                    "\nSelect the password to be copied to your clipboard (ex: 1), or type (.c) to cancel: ")
+                    "\nSelect the password to be copied to your clipboard (ex: 1), or leave blank to cancel: ")
 
                 if user_continue.isdigit():
 
-                    if int(user_continue) > 0:
+                    if 0 < int(user_continue) <= i:
                         try:
                             password = str(
                                 decrypt_data(
@@ -279,37 +309,25 @@ def find_profile_data(hashed_pass, db):
                         print("\nThere are no profiles corresponding to that number.")
 
                 if not user_continue.isdigit():
-
-                    if user_continue != timeout_global_code:
-                        return False
-                    else:
-                        return True
+                    return cancel_or_timeout(user_continue)
             else:
                 print("Could not find a match. Try viewing all saved profiles.")
-
         except RuntimeError:
             print("Error finding profile.")
+
         user_continue = timeout_input("\nPress enter to return to menu...")
 
-        if user_continue != timeout_global_code:
-            return False
-        else:
-            return True
+        return cancel_or_timeout(user_continue)
 
-    if read_domain == ".c":
-        print("Operation canceled.")
-        print("\nReturning to Menu")
-        return False
-
-    if read_domain == timeout_global_code:
-        return True
+    return cancel_or_timeout(read_domain)
 
 
 def edit_profile_data(hashed_pass, db):
     display_header("EDIT A PROFILE")
-    edit_domain = timeout_input("Website domain name (submit (.c) to cancel): ")
+    print("You need to type the exact match.")
+    edit_domain = timeout_input("Website domain name or submit (.c) to cancel at any time: ")
 
-    if edit_domain != ".c" and edit_domain != timeout_global_code:
+    if is_valid_input(edit_domain):
         try:
             domain_info = db[edit_domain]
             curr_user = str(
@@ -320,15 +338,12 @@ def edit_profile_data(hashed_pass, db):
             )
 
             edit_user = timeout_input("New Username (press enter to keep the current: " + curr_user + "): ")
+
             if edit_user == ".c":
                 print("Operation canceled.")
                 user_continue = timeout_input("\nPress enter to return to menu...")
 
-                if user_continue != timeout_global_code:
-                    print("Returning to menu")
-                    return False
-                else:
-                    return True
+                return cancel_or_timeout(user_continue)
 
             if edit_user == " " or edit_user == "":
                 edit_user = curr_user
@@ -337,6 +352,13 @@ def edit_profile_data(hashed_pass, db):
                 return True
 
             edit_password = timeout_input("New Password (press enter to keep the current: " + curr_password + "): ")
+
+            if edit_password == ".c":
+                print("Operation canceled.")
+                user_continue = timeout_input("\nPress enter to return to menu...")
+
+                return cancel_or_timeout(user_continue)
+
             if edit_password == " " or edit_password == "":
                 edit_password = curr_password
 
@@ -359,34 +381,24 @@ def edit_profile_data(hashed_pass, db):
             del db
             user_continue = timeout_input("\nPress enter to return to menu...")
 
-            if user_continue != timeout_global_code:
-                print("Returning to menu")
-                return False
-            else:
-                return True
+            return cancel_or_timeout(user_continue)
 
         except KeyError:
             print("This domain does not exist, changing to adding to new profile")
             user_continue = timeout_input("\nPress enter to return to menu...")
 
-            if user_continue != timeout_global_code:
-                print("Returning to menu")
-                return False
-            else:
-                return True
+            return cancel_or_timeout(user_continue)
 
-    if edit_domain != timeout_global_code:
-        print("Returning to menu")
-        return False
-    else:
-        return True
+    return cancel_or_timeout(edit_domain)
 
 
 def read_all_profiles(hashed_pass, db):
     display_header("READING ALL PROFILES")
+
     try:
         i = 0
         domains = list(db.keys())
+
         for e in db:
             i = i + 1
             username = str(
@@ -403,9 +415,10 @@ def read_all_profiles(hashed_pass, db):
 
         if i > 0:
             user_continue = timeout_input(
-                "\nSelect the password to be copied to your clipboard (ex: 1), or type (.c) to cancel: ")
+                "\nSelect the password to be copied to your clipboard (ex: 1), or leave blank to cancel: ")
 
             if user_continue.isdigit():
+
                 if 0 < int(user_continue) <= i:
                     try:
                         password = str(
@@ -419,106 +432,89 @@ def read_all_profiles(hashed_pass, db):
                 else:
                     print("\nThere are no profiles corresponding to that number.")
 
-            if not user_continue.isdigit() and user_continue != timeout_global_code:
-                return False
-
-            if user_continue == timeout_global_code:
-                return True
+            if not user_continue.isdigit():
+                return cancel_or_timeout(user_continue)
 
     except RuntimeError:
         print("Could not load all profiles")
 
     user_continue = timeout_input("\nPress enter to return to menu...")
 
-    if user_continue != timeout_global_code:
-        print("Returning to menu")
-        return False
-    else:
-        return True
+    return cancel_or_timeout(user_continue)
 
 
 def delete_profile_data(hashed_pass, db):
     display_alert("DELETE A PROFILE")
-    del_domain = timeout_input("Write the exact saved domain name (type (.c) to cancel): ")
+    del_domain = timeout_input("Write the exact saved domain name or leave blank to cancel): ")
 
-    if del_domain != ".c" and del_domain != timeout_global_code:
+    if is_valid_input(del_domain):
+        if del_domain in db:
+            confirm_deletion = timeout_input(f"Confirm deletion of profile {del_domain}? (y)es or (n)o:\n")
+            if confirm_deletion == "y":
+                print("Deleting profile...")
+            else:
+                return cancel_or_timeout(confirm_deletion)
         try:
             del db[del_domain]
             overwrite_db(encrypt_data(json.dumps(db), hashed_pass).decode("utf-8"))
             print("Deleted " + del_domain + " profile successfully!")
             user_continue = timeout_input("\nPress enter to return to menu...")
 
-            if user_continue != timeout_global_code:
-                print("Returning to menu")
-                return False
-            else:
-                return True
+            return cancel_or_timeout(user_continue)
 
         except KeyError:
             print("Unable to find " + del_domain)
             user_continue = timeout_input("\nPress enter to return to menu...")
 
-            if user_continue != timeout_global_code:
-                print("Returning to menu")
-                return False
-            else:
-                return True
+            return cancel_or_timeout(user_continue)
 
     else:
-        if del_domain != timeout_global_code:
-            print("Returning to menu")
-            return False
-        else:
-            return True
+        return cancel_or_timeout(del_domain)
 
 
-def pwd_generate(hashed_pass, db):
+def pwd_generate():
     display_header("GENERATE RANDOM PASSWORD")
-    pass_length = str(timeout_input("Password length (type (.c) to cancel): "))
+    pass_length = str(timeout_input("Password length (leave blank to cancel): "))
 
-    if pass_length != ".c" and pass_length != timeout_global_code:
+    if is_valid_input(pass_length):
+        if not pass_length.isdigit():
+            return cancel_or_timeout(pass_length)
         try:
             if int(pass_length) < 6:
-                pass_length = str(12)
-                print("\nPasswords must be at least 6 characters long.")
+                pass_length = str(6)
+                print("\nPasswords must be at least 6 characters long, generating with 6 characters.")
+            if int(pass_length) > 50:
+                pass_length = str(50)
+                print("\nPasswords must be at maximum 50 characters long, generating with 50 characters.")
+
             print(to_clipboard(str(generate_password(int(pass_length)))))
             user_continue = timeout_input("\nPress enter to return to menu...")
 
-            if user_continue != timeout_global_code:
-                print("Returning to menu")
-                return False
-            else:
-                return True
+            return cancel_or_timeout(user_continue)
 
         except ValueError:
             print("Unable to generate password.")
             user_continue = timeout_input("\nPress enter to return to menu...")
 
-            if user_continue != timeout_global_code:
-                print("Returning to menu")
-                return False
-            else:
-                return True
+            return cancel_or_timeout(user_continue)
     else:
-        if pass_length != timeout_global_code:
-            print("Returning to menu")
-            return False
-        else:
-            return True
+        return cancel_or_timeout(pass_length)
 
 
 def file_setup():
-    with open("SALT.txt", "rb") as readfile:
+    vault_dir = get_vault_directory()
+
+    with open(os.path.join(vault_dir, "SALT.txt"), "rb") as readfile:
         content1 = readfile.read()
         readfile.close()
     c_salt = content1
 
-    with open("VERIFIER.txt", "rb") as readfile:
+    with open(os.path.join(vault_dir, "VERIFIER.txt"), "rb") as readfile:
         content2 = readfile.read()
         readfile.close()
     c_verifier = content2
 
-    file_path = "pm_db.mmf"
+    file_path = os.path.join(vault_dir, "pm_db.mmf")
     file = open(file_path, "rb")
     content3 = file.read()
     data_base = content3
@@ -585,9 +581,9 @@ def timeout_input(caption):
     return user_input
 
 
-def generate_password(length=12):
-    if length < 6:
-        length = 12
+def generate_password(length):
+    # if length < 6:
+    #     length = 12
 
     uppercase_loc = secrets.choice(string.digits)
     symbol_loc = secrets.choice(string.digits)
@@ -605,19 +601,6 @@ def generate_password(length=12):
         else:
             password += secrets.choice(pool)
     return password
-
-
-def encrypt_data(data_input, hashed_pass):
-    message = data_input.encode()
-    f = Fernet(hashed_pass)
-    encrypted = f.encrypt(message)
-    return encrypted
-
-
-def decrypt_data(data_input, hashed_pass):
-    f = Fernet(hashed_pass)
-    decrypted = f.decrypt(data_input)
-    return decrypted
 
 
 def verify_password(password_provided, c_salt, c_verifier):
@@ -644,9 +627,24 @@ def verify_password(password_provided, c_salt, c_verifier):
 
 
 def overwrite_db(new_contents):
-    file = open("pm_db.mmf", "w+")
+    vault_dir = get_vault_directory()
+    file = open(os.path.join(vault_dir, "pm_db.mmf"), "w+")
     file.write(new_contents)
     file.close()
+
+
+def is_valid_input(user_input):
+    return user_input not in ["c", ".c", timeout_global_code, "", " "]
+
+
+def cancel_or_timeout(user_input):
+    if user_input == ".c":
+        print("Operation canceled.")
+        return False
+    elif user_input == timeout_global_code:
+        return True
+    else:
+        return False
 
 
 if __name__ == "__main__":

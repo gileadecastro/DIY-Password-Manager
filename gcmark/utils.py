@@ -1,5 +1,6 @@
 def ascii_images(value):
     divider_img = "-----------------------------------------------------------------------------------------------------------------------\n"
+
     lock_img = """                               
     
                                                               ^jEQBQDj^             
@@ -18,6 +19,7 @@ def ascii_images(value):
     
     
         """
+
     check_img = """                               
     
                                                                            `xx.  
@@ -33,6 +35,7 @@ def ascii_images(value):
                                                             )ER)                            
     
         """
+
     alert_img = """
                                                    
                                                 `xx.  
@@ -53,6 +56,7 @@ def ascii_images(value):
                                               `xx.
                                            
     """
+
     vault_img = """
                                               !wdEEEEEEEEEEEEEEEEEEEEEEEEEEEEdw~   
                                             M@@ZzzzzzzzzzzzzzzzzzzzzzzzzzzzzZ@@6` 
