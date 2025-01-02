@@ -42,6 +42,8 @@ if [[ ! -d "$VENV_DIR" ]]; then
         cls
     fi
 
+    echo "Starting GCMark-Vault..."
+
     if [[ $? -ne 0 ]]; then
         echo "Failed to install dependencies. Check your requirements.txt file and network connection."
         deactivate
