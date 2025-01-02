@@ -502,24 +502,32 @@ def pwd_generate():
 
 
 def file_setup():
-    vault_dir = get_vault_directory()
+    try:
+        vault_dir = get_vault_directory()
 
-    with open(os.path.join(vault_dir, "SALT.txt"), "rb") as readfile:
-        content1 = readfile.read()
-        readfile.close()
-    c_salt = content1
+        with open(os.path.join(vault_dir, "SALT.txt"), "rb") as readfile:
+            content1 = readfile.read()
+            readfile.close()
+        c_salt = content1
 
-    with open(os.path.join(vault_dir, "VERIFIER.txt"), "rb") as readfile:
-        content2 = readfile.read()
-        readfile.close()
-    c_verifier = content2
+        with open(os.path.join(vault_dir, "VERIFIER.txt"), "rb") as readfile:
+            content2 = readfile.read()
+            readfile.close()
+        c_verifier = content2
 
-    file_path = os.path.join(vault_dir, "pm_db.mmf")
-    file = open(file_path, "rb")
-    content3 = file.read()
-    data_base = content3
+        file_path = os.path.join(vault_dir, "pm_db.mmf")
+        file = open(file_path, "rb")
+        content3 = file.read()
+        data_base = content3
 
-    return c_salt, c_verifier, data_base
+        return c_salt, c_verifier, data_base
+
+    except FileNotFoundError:
+        os.system("cls" if os.name == "nt" else "clear")
+        print(ascii_images("alert"))
+        print("\nERROR\n\nCould not find SALT or VERIFIER in your directory, delete the 'pm_db.mmf' and restart to "
+              "vault setup.\nSadly, all saved profiles will be lost.")
+        sys.exit()
 
 
 def display_header(title):
@@ -582,9 +590,6 @@ def timeout_input(caption):
 
 
 def generate_password(length):
-    # if length < 6:
-    #     length = 12
-
     uppercase_loc = secrets.choice(string.digits)
     symbol_loc = secrets.choice(string.digits)
     lowercase_loc = secrets.choice(string.digits)
